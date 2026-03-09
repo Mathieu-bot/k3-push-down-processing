@@ -70,5 +70,41 @@ public class DataRetriever {
         return results;
     }
 
+    public Map<String, Double> getPourcentageVenteParMarqueAvant2026() {
+        String sql = """
+            SELECT
+                c.marque,
+                ROUND(
+                    COALESCE(SUM(p.quantite), 0) * 100.0 / NULLIF(
+                        (SELECT COALESCE(SUM(p2.quantite), 0)
+                         FROM piece p2
+                         JOIN voiture c2 ON p2.voiture_id = c2.id
+                         WHERE p2.date_vente < '2026-01-01'), 0
+                    ), 2
+                ) AS pourcentage
+            FROM voiture c
+            LEFT JOIN piece p ON c.id = p.voiture_id AND p.date_vente < '2026-01-01'
+            GROUP BY c.marque
+            ORDER BY c.marque
+            """;
+
+        Map<String, Double> results = new HashMap<>();
+
+        try (Connection connection = dbConnection.getDBConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery())
+        {
+            while (rs.next()) {
+                String marque = rs.getString("marque");
+                double pourcentage = rs.getDouble("pourcentage");
+                results.put(marque, pourcentage);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return results;
+    }
+
 }
 

@@ -8,7 +8,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class DataRetriever {
 
@@ -34,6 +36,32 @@ public class DataRetriever {
                 int nbrePiecesVendus = rs.getInt("nbre_pieces_vendus");
 
                 results.add(new CarSalesRecord(marque, modele, nbrePiecesVendus));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return results;
+    }
+
+    public Map<String, Integer> getPiecesVenduesParMarqueLigneUnique() {
+        String sql = """
+            SELECT
+                COALESCE(SUM(CASE WHEN c.marque = 'KIA' THEN p.quantite ELSE 0 END), 0) AS nbre_piece_kia,
+                COALESCE(SUM(CASE WHEN c.marque = 'DAEWOO' THEN p.quantite ELSE 0 END), 0) AS nbre_piece_daewoo
+            FROM voiture c
+            LEFT JOIN piece p ON c.id = p.voiture_id
+            """;
+
+        Map<String, Integer> results = new HashMap<>();
+
+        try (Connection connection = dbConnection.getDBConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery())
+        {
+            if (rs.next()) {
+                results.put("nbre_piece_kia", rs.getInt("nbre_piece_kia"));
+                results.put("nbre_piece_daewoo", rs.getInt("nbre_piece_daewoo"));
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
